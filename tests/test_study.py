@@ -35,7 +35,7 @@ class CoreTests(unittest.TestCase):
         with self.assertRaises(ValueError): span_union([[False,3]],10)
 
     def test_offsets_unicode_and_implicit_policy(self):
-        text="猫 opens at 8 a.m."
+        text="€ opens at 8 a.m."
         lo=text.index("8 a.m.")
         row={"response":text,"labels":[{"start":lo,"end":lo+6,"implicit_true":True}]}
         self.assertEqual(gold_spans(row),[[lo,lo+6]])

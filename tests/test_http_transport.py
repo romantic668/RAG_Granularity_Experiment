@@ -34,10 +34,10 @@ class CurlPipelineTests(base.APIPipelineTests):
         client = APIClient(self.cfg, self.root/'curl_secrecy', 1, 2)
         with patch('ragstudy.http_transport.subprocess.run', side_effect=checked):
             result, _ = client.call('verify', 'unicode', VERIFY_PROMPT,
-                                    {'target_unit': '猫 arrives on Monday.'}, VERIFY_SCHEMA)
+                                    {'target_unit': '€ arrives on Monday.'}, VERIFY_SCHEMA)
         self.assertEqual(result['status'], 'supported')
         self.assertEqual(len(calls), 1)
-        self.assertEqual(json.loads(self.requests[-1]['messages'][1]['content'])['target_unit'], '猫 arrives on Monday.')
+        self.assertEqual(json.loads(self.requests[-1]['messages'][1]['content'])['target_unit'], '€ arrives on Monday.')
 
     def test_error_detail_is_usable_and_key_redacted(self):
         secret = 'sk-local-private-sentinel'

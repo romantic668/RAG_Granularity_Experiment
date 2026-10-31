@@ -1,45 +1,57 @@
-# 原子提取修正及下一步
+# Atomic Extraction Fixes and Next Steps
 
-已定位的问题：在原始 API 提取结果中，`text` 有时重复完整的复合句，只有引用片段分开。程序随后确实验证了该复合句。不是 CSV 导出把原子事实变回了整句。
+> **Historical development note (v3b to v4b).** It records how the atomic extraction prompt was revised during the pilot stage. The later v4c revision, the pilot and the formal 300-response run are documented in `README.md`, `pilot_v4c_review.md` and `protocol_v4c.json`. The commands at the end are kept for the record and refer to the old v3 workflow.
 
-修正：输出使用明确的 `claim_text` 字段；提示提供虚构的天气属性和人物事件拆分示例，强调每条只包含一个断言，并保留否定、范围、条件及不确定性。提取单独设置 low reasoning effort，所有组的验证仍为 none，固定模型不变。规则不是简单按 and 切分。引用匹配仍不能证明语义正确，需要人工审核。
+Problem identified: in the raw API extraction output, `text` sometimes repeated the complete compound sentence while only the quoted fragments were separate. The program then really did verify that compound sentence. The CSV export was not turning atomic facts back into whole sentences.
 
-## v3b：第一轮小检查后的补充
+Fix: the output now uses an explicit `claim_text` field. The prompt provides fictional examples of splitting weather attributes and a person's events, stresses that each claim contains exactly one assertion, and requires negation, scope, conditions and uncertainty to be preserved. Extraction has its own `low` reasoning effort, while verification stays at `none` for every group and the fixed model is unchanged. The rule is not a simple split on "and". Quote matching still does not prove semantic correctness; manual audit is required.
 
-已审核用户上传的3条真实提取结果：4、10、5条事实，共19条；没有重复文本或引用回退，所有引用出现位置和范围有效。仍发现：
+## v3b: additions after the first small check
 
-- 护理机构“像医院，并有共用房间”合为一条事实。
-- “may have ... and offer ...”的后一个谓词丢失may，可能性变为确定陈述。
-- 天气后续句的地点/日期未在事实文本中补全；风速引用只取数值，未包含可用的winds关系词。
+The 3 real extraction results uploaded by the user were reviewed: 4, 10 and 5 facts, 19 in total. There were no duplicate texts or quote fallbacks, and all quote positions and ranges were valid. The review still found:
 
-v3b新增虚构的workshop/studio例子，分别演示属性拆分和情态词作用域；要求补齐上下文、引用关系词。它们是train阶段的流程修正，未使用test表现。真实效果仍需第二轮检查。
+- A care facility described as "like a hospital and with shared rooms" was merged into a single fact.
+- In "may have ... and offer ...", the second predicate lost "may", turning a possibility into a definite statement.
+- The location and date of the follow-up weather sentences were not completed in the fact text, and the wind-speed quote took only the number, without the usable relation word "winds".
 
-## v4b：本地手动修改提示词（在 v3b 之上，直接改 `ragstudy/core.py`）
+v3b adds fictional workshop/studio examples that demonstrate attribute splitting and the scope of modal words, and requires context to be completed and relation words to be quoted. These are train-stage process fixes; test performance was not used. The real effect still needs a second round of checks.
 
-不要再运行 `apply_http_fix.py`：它里面是 v3b 补丁，`core.py` 已有本地修改，安装器会拒绝覆盖。
+## v4b: local manual prompt edit (on top of v3b, edited directly in `ragstudy/core.py`)
 
-新增规则：并列动词拆成各自的事实；目的/方式/工具/时长短语跟随其所属动作；共享修饰词留在每个并列项上；“the main X are:”这类框架语在每条事实里保留且不得弱化；事实不得以未解析的 it/they/these 开头；每个引文必须是原句中一个连续、未改动的子串（禁止 `...`、方括号、改变首字母大小写）。新增例子用的是应用功能、水壶、通风口，与已测样本内容无关。
+Do not run `apply_http_fix.py` again: it contains the v3b patch, `core.py` already has local modifications, and the installer will refuse to overwrite it.
 
-验证（提取诊断，无验证器，约 0.29 USD）：
-- 未参与调提示词的 `data/atomic_check_heldout8.jsonl`（8条，v3b 2次、v4b 2次）：回退、事实数、情态词保留基本持平，**没有可靠改善**，也没有明显退步；差异在随机波动范围内。
-- `hard8`（发现问题的样本，已用于调提示词，只能说明问题是否消失）：“取出并静置”未拆开 2/3→0/3；“good”在并列项上保留 1/3→3/3；`main` 框架保留 0/3→部分出现。
-- 仍然存在：未解析的 “These …”、非 main 框架（如 advantages）被丢弃、偶发漏掉一个事实（14185 的 renewal term）、偶发拆出目的句、偶发引文大小写不匹配导致 sentence_fallback。提取有随机性，同一提示词多次结果不同。
-- 结论：再继续改提示词收益很小，容易对这些样本过拟合。pilot 阶段用 `claim_audit.csv` 量化这些问题并写入局限性；正式实验对原子事实组重复运行（`--repeat`）并报告波动。
+New rules:
 
-## 现在执行
+- Coordinated verbs are split into separate facts.
+- Purpose, manner, instrument and duration phrases stay with the action they belong to.
+- A shared modifier stays on every coordinated item.
+- Framing phrases such as "the main X are:" are kept in every fact and must not be weakened.
+- A fact must not start with an unresolved it/they/these.
+- Every quotation must be one contiguous, unmodified substring of the original sentence (no `...`, no square brackets, no change of first-letter case).
 
-重新下载最新版 `apply_atomic_fix.py`，覆盖上次同名安装脚本，然后放在 `experiment.py` 同一目录，在 PowerShell 中执行：
+The new examples use app features, a kettle and a vent, which are unrelated to the samples tested.
+
+Verification (extraction diagnostics only, no verifier, about 0.29 USD):
+
+- On `data/atomic_check_heldout8.jsonl`, which was not used for tuning the prompt (8 samples; v3b twice, v4b twice), fallbacks, fact counts and modal-word preservation were roughly level. There was **no reliable improvement** and no clear regression; differences are within random fluctuation.
+- On `hard8` (the samples where the problems were found, already used for tuning, so they only show whether the problem disappeared): "take out and let rest" left unsplit 2/3 to 0/3; "good" kept on the coordinated items 1/3 to 3/3; the `main` framing was partly preserved, up from 0/3.
+- Still present: unresolved "These ...", non-"main" framings (such as "advantages") dropped, an occasional missed fact (the renewal term of 14185), an occasional purpose clause split off, and an occasional quote case mismatch that causes a `sentence_fallback`. Extraction is stochastic: the same prompt gives different results across runs.
+- Conclusion: further prompt changes would yield little and risk overfitting to these samples. In the pilot stage, quantify these problems with `claim_audit.csv` and state them as limitations; for the formal experiment, repeat the atomic group (`--repeat`) and report the variability.
+
+## Execution at that time
+
+Download the latest `apply_atomic_fix.py`, overwrite the previous installer of the same name, place it in the same directory as `experiment.py`, and run in PowerShell:
 
 ```powershell
 py -3 apply_atomic_fix.py
 py -3 atomic_tools.py check --out runs/atomic_check_v3b --max-requests 6 --max-usd 0.5
 ```
 
-安装不调用付费 API。最后一条通常调用提取模型3次；重试计入6次上限，0.5 USD为软阈值。没有运行验证器，因此没有检测分数。
+Installation makes no paid API calls. The last command normally calls the extraction model 3 times; retries count toward the cap of 6, and 0.5 USD is a soft threshold. The verifier was not run, so there are no detection scores.
 
-完成后上传 `runs/atomic_check_v3b/atomic_check.json`。它含原文、拆分事实及引用，可检查单事实性、意思保留、事实完整、原文映射。不要仅凭事实条数判断通过。样本15798、16825、13958来自旧 train pilot 中的结构问题，用于诊断，不用于估计检测性能。
+Afterwards, upload `runs/atomic_check_v3b/atomic_check.json`. It contains the original text, the split facts and the quotes, so single-fact status, meaning preservation, completeness and source mapping can be checked. Do not judge a pass by the number of facts alone. Samples 15798, 16825 and 13958 come from structural problems in the old train pilot and are used for diagnosis, not for estimating detection performance.
 
-## 检查通过后的 pilot
+## Pilot after the check passes
 
 ```powershell
 py -3 atomic_tools.py reuse --source runs/pilot_v2 --out runs/pilot_v3
@@ -48,11 +60,11 @@ py -3 experiment.py evaluate --input data/pilot60.jsonl --run-dir runs/pilot_v3 
 py -3 experiment.py estimate --run-dir runs/pilot_v3 --n 300
 ```
 
-旧目录名字不同时改 `--source`。`reuse` 不调用 API，只将数据、完整请求、模型及原始结果均匹配的 response/sentence 缓存复制到新目录。已上传的 pilot_v2 中501个调用可复用；旧 atomic 全部不导入。保留历史耗时和方法费用，报告会披露复用来源；新目录预算只累计新请求。启动 run 后断点续跑只重执行 run，不再执行 reuse。不能复用旧版冻结协议。
+If the old directory has a different name, change `--source`. `reuse` makes no API calls; it only copies into the new directory the response/sentence cache whose data, complete request, model and raw result all match. The 501 calls in the uploaded pilot_v2 can be reused; the old atomic calls are not imported at all. Historical latency and per-method cost are kept, the report discloses the reuse source, and the new directory's budget counts only new requests. After `run` has started, resuming re-executes only `run`, not `reuse`. A frozen protocol from an older version cannot be reused.
 
-pilot_v3 完成后按原手册审核 claim_audit.csv、response_audit.csv 和错误案例，将实际结论填入 templates/pilot_audit_notes.md。小诊断通过不等于60条提取全部正确。
+After pilot_v3 completes, audit `claim_audit.csv`, `response_audit.csv` and the error cases as in the original manual, and record the actual conclusions in `templates/pilot_audit_notes.md`. Passing the small diagnostic does not mean all 60 extractions are correct.
 
-## 审核后再正式300条
+## Formal 300 responses after the audit
 
 ```powershell
 py -3 experiment.py freeze --pilot-dir runs/pilot_v3 --final-data data/final300.jsonl --out protocol_v3.json --audit-notes templates/pilot_audit_notes.md
@@ -60,8 +72,8 @@ py -3 experiment.py run --input data/final300.jsonl --out runs/final_v3_r1 --pha
 py -3 experiment.py evaluate --input data/final300.jsonl --run-dir runs/final_v3_r1 --bootstrap 1000
 ```
 
-5/20 USD均为示例软阈值，按修正版 pilot 的估算和实际账单决定预算。正式实验全部三组重新调用；不使用旧 pilot 缓存。不得根据 test 分数调整提取提示或选择有利样本。
+The 5 and 20 USD values are example soft thresholds; set the budget from the revised pilot's estimate and the actual bill. The formal experiment calls all three groups anew and does not use the old pilot cache. Do not adjust the extraction prompt or select favorable samples based on test scores.
 
-## 本地验证范围
+## Local verification scope
 
-通过30项项目测试，覆盖 claim_text 实际进入验证器、阶段参数、无标签泄漏、只提取诊断、缓存完整请求匹配、错误拒绝、历史资源保留、续跑、传输与冻结。另通过4项安装检查，覆盖安装备份、重复安装、回滚、自定义修改保护及v3到v3b升级。已对用户上传文件核对501个基线调用均可匹配。此环境未调用真实 OpenAI 模型，修正版的实际语义质量仍待小诊断审核。
+30 project tests passed, covering `claim_text` actually reaching the verifier, stage parameters, no label leakage, extraction-only diagnostics, complete-request cache matching, error rejection, retention of historical resources, resuming, transport and freezing. 4 installation checks also passed, covering installation backup, repeated installation, rollback, protection of custom modifications, and the v3 to v3b upgrade. All 501 baseline calls in the user-uploaded files were verified to match. No real OpenAI model was called in this environment, so the actual semantic quality of the revised version still awaits review of the small diagnostic.
