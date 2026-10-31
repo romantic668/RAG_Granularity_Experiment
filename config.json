@@ -1,0 +1,21 @@
+{
+  "base_url": "https://api.openai.com/v1",
+  "model": "gpt-5.4-mini-2026-03-17",
+  "reasoning_effort": "none",
+  "temperature": null,
+  "verify_max_completion_tokens": 1024,
+  "extract_max_completion_tokens": 8192,
+  "timeout_seconds": 120,
+  "max_retries": 2,
+  "max_claims": 80,
+  "max_evidence_chars": 20000,
+  "max_response_chars": 12000,
+  "seed": 20261015,
+  "primary_label_policy": "all_annotated_spans",
+  "price_usd_per_million_input": 0.75,
+  "price_usd_per_million_cached_input": 0.075,
+  "price_usd_per_million_output": 4.5,
+  "price_checked_date": "2026-10-15",
+  "http_transport": "curl",
+  "extract_reasoning_effort": "low"
+}

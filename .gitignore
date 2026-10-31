@@ -1,0 +1,20 @@
+# Secrets
+.env
+.env.*
+*.key
+*.pem
+
+# Python
+__pycache__/
+*.pyc
+
+# Review bundles (regenerable)
+*.zip
+
+# Run outputs: keep only the final v4c results (without the per-call cache)
+runs/*
+!runs/final_v4c_r1/
+runs/final_v4c_r1/call_cache/
+
+# Patch-script backups and local scratch
+*_backup_*/

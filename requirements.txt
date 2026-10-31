@@ -1,0 +1,2 @@
+# Python 3.10 or later. The runnable study uses the Python standard library only.
+# No pip installation, GPU, PyTorch, transformers or MiniCheck download is required.

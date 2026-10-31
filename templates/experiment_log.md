@@ -1,0 +1,23 @@
+# Experiment Record
+
+- Research question: How does verification granularity affect detection, localization and processing cost under fixed conditions?
+- Researcher:
+- Date and time:
+- Phase: smoke / pilot / final
+- Data file and SHA256:
+- Response count and source-group count:
+- Verifier and extractor model IDs:
+- Frozen protocol SHA256:
+- Computer, operating system and Python version:
+- Network conditions:
+- Run output directory:
+- Repeat number:
+- Any interruption, retry or cache resumption:
+- Human audit notes:
+- Primary label policy: all annotated spans
+- Supplementary label policy: exclude implicit_true
+- Main results:
+- False positive examples:
+- False negative examples:
+- Extraction or mapping failures:
+- Interpretation and limitations:
